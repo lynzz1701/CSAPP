@@ -1,0 +1,32 @@
+## Leader: Yining Liu 516030910125
+
+.pos 0
+Init:
+irmovl Stack,%esp
+call Main
+halt
+#test data:
+.align 4
+ele1:
+.long 0x00a
+.long ele2
+ele2:
+.long 0x0b0
+.long ele3
+ele3:
+.long 0xc00
+.long 0
+Main:
+xorl %eax,%eax        #ax=0
+irmovl ele1,%ebx    #initialize test data
+Loop:
+mrmovl (%ebx),%edx    #save number
+addl %edx,%eax        #add
+mrmovl 4(%ebx),%ebx    #load next address
+andl %ebx,%ebx        #ebx==0?
+je End            #end
+jmp Loop
+End:
+ret
+.pos 0x100
+Stack:

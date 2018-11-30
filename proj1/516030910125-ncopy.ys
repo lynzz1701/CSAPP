@@ -1,0 +1,121 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len ints to dst.
+# Return the number of positive ints (>0) contained in src.
+# 
+# leader: 516030910125 Yining Liu
+
+# Description:
+# 1.Target:
+#    The wrongly-predicted branches and bubbles are main reasons that increase 
+# the CPI. Thus, we accelarate this program mainly by decreasing the number of
+# branches and bubbles.
+# 2.Modification:
+# 1)Branch:
+#    To decrease the number of wrong-predicted branches, the only way is to 
+# decrease the total number of branches, which needs us to avoid unnecessary 
+# comparisions. 
+#    The method in this project to decrease comparasions is to decrease the 
+# judgement. There are two mainly kinds of comparasion: a.judging whether the 
+# copy-content(stored in %esi,%edi) is positive; b.judging whether the 
+# current copy-length(stored in %edx) is positive.
+# a.It is no effient way to decrease the comparasion caused by judgin copy-
+# content since the copy-contents are random.
+# b.We copy 4 elements in a cycle of Loop, so that we can only judge the length # once with 4 copy operations while the original code judge the length once with# one copy operations. And we can further reduce the comparasions by copying 
+# more elements in a cycle of Loop. In this project we choose 4 to make the code# clearer.
+# 2)Bubble:
+#    The bubbles are mainly caused by adjacant memory operations. In this
+# project, 'mrmovl' following by 'rmmovl' operation which operates on the same
+# register is the main source of bubbles in the original code.The bubble will be# formed because only after the former instruction passes its Memory stage will
+# the latter operation enter the Execution stage. In this project, we put 
+# another 'rmmovl' operating on different register after a 'rmmovl'. Two
+# seperate write-after-read operations are executed in pairs, which eliminate
+# bubbles.
+##################################################################
+# Do not modify this portion
+# Function prologue.
+ncopy:	pushl %ebp		# Save old frame pointer
+	rrmovl %esp,%ebp	# Set up new frame pointer
+	pushl %esi		# Save callee-save regs
+	pushl %ebx
+	pushl %edi
+	mrmovl 8(%ebp),%ebx	# src
+	mrmovl 16(%ebp),%edx	# len
+	mrmovl 12(%ebp),%ecx	# dst
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorl %eax,%eax		# count = 0;
+	iaddl $-4,%edx		#len-4
+	andl %edx,%edx		#len<4?
+	jl Remain		#remain elements <=3
+Loop:	
+	mrmovl (%ebx),%esi	#fetch src
+	mrmovl 4(%ebx),%edi	#fetch src+1(fetch 2 elements continously)
+	rmmovl %esi,(%ecx)	#move 2 to dest
+	rmmovl %edi,4(%ecx)
+	andl %esi,%esi		#esi<=0?
+	jle Npos1		#esi<=0
+	iaddl $1,%eax		#esi>0,count++
+Npos1:
+	andl %edi,%edi		#edi<=0?
+	jle Npos2		#edi<=0
+	iaddl $1,%eax		#edi>0,count++
+Npos2:
+	mrmovl 8(%ebx),%esi	#all the following instrcutions are similar to above
+	mrmovl 12(%ebx),%edi
+	rmmovl %esi,8(%ecx)
+	rmmovl %edi,12(%ecx)
+	andl %esi,%esi
+	jle Npos3
+	iaddl $1,%eax
+Npos3:
+	andl %edi,%edi
+	jle Npos		#goto next loop
+	iaddl $1,%eax
+Npos:	
+	iaddl $-4, %edx		# len-=4
+	iaddl $16, %ebx		# src+=4
+	iaddl $16, %ecx		# dst+=4
+	andl %edx,%edx		# actual len >= 4? edx>=0?
+	jge Loop		# if so, goto Loop:
+Remain:
+	iaddl $4,%edx  		# Restore the true len
+        iaddl $-1,%edx		#len=0?
+        jl Done
+        mrmovl (%ebx),%esi	#move 2 elements
+        mrmovl 4(%ebx),%edi	
+        rmmovl %esi,(%ecx)
+        andl %esi ,%esi		#similar to above loop
+        jle rNpos
+        iaddl $1,%eax
+rNpos:  
+        iaddl $-1,%edx		#only 1 element
+        jl Done
+        rmmovl %edi,4(%ecx)
+        andl %edi,%edi
+        jle rNpos1
+        iaddl $1,%eax
+rNpos1:
+        iaddl $-1,%edx 		#2 elements
+        jl Done
+        mrmovl 8(%ebx),%esi
+        rmmovl %esi,8(%ecx)
+        andl %esi,%esi
+        jle Done
+        iaddl $1,%eax
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	popl %edi               # Restore callee-save registers
+	popl %ebx
+	popl %esi
+	rrmovl %ebp, %esp
+	popl %ebp
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

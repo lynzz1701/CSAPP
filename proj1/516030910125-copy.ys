@@ -1,0 +1,42 @@
+## Leader: Yining Liu 516030910125
+
+.pos 0
+Init:
+irmovl Stack,%esp
+call Main
+halt
+
+.align 4
+# Source block
+src:
+.long 0x00a
+.long 0x0b0
+.long 0xc00
+# Destination block
+dest:
+.long 0x111
+.long 0x222
+.long 0x333
+
+Main:
+xorl %eax,%eax            #eax=0
+irmovl src,%ebx            #store src
+irmovl dest,%ecx        #store dest
+irmovl 3,%edx            #length
+Loop:
+andl %edx,%edx            #edx==0???
+je End
+mrmovl (%ebx),%edi        #copy
+rmmovl %edi,(%ecx)             #paste
+xorl %edi,%eax                 #checksum
+irmovl 4,%esi
+addl %esi,%ebx
+addl %esi,%ecx                #fetch new data
+irmovl 1,%esi
+subl %esi,%edx                #decrease len
+jmp Loop
+End:
+ret                        # return
+
+.pos 0x100
+Stack:
